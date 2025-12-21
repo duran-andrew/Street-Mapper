@@ -1,38 +1,51 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  sessions,
+  breadcrumbs,
+  type Session,
+  type InsertSession,
+  type Breadcrumb,
+  type InsertBreadcrumb,
+} from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Sessions
+  getSessions(): Promise<Session[]>;
+  getSession(id: number): Promise<Session | undefined>;
+  createSession(session: InsertSession): Promise<Session>;
+  
+  // Breadcrumbs
+  getBreadcrumbs(sessionId: number): Promise<Breadcrumb[]>;
+  createBreadcrumb(breadcrumb: InsertBreadcrumb): Promise<Breadcrumb>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getSessions(): Promise<Session[]> {
+    return await db.select().from(sessions).orderBy(desc(sessions.createdAt));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getSession(id: number): Promise<Session | undefined> {
+    const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
+    return session;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createSession(session: InsertSession): Promise<Session> {
+    const [newSession] = await db.insert(sessions).values(session).returning();
+    return newSession;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async getBreadcrumbs(sessionId: number): Promise<Breadcrumb[]> {
+    return await db.select()
+      .from(breadcrumbs)
+      .where(eq(breadcrumbs.sessionId, sessionId))
+      .orderBy(breadcrumbs.timestamp);
+  }
+
+  async createBreadcrumb(breadcrumb: InsertBreadcrumb): Promise<Breadcrumb> {
+    const [newBreadcrumb] = await db.insert(breadcrumbs).values(breadcrumb).returning();
+    return newBreadcrumb;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
