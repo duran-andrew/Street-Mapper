@@ -86,6 +86,32 @@ export const api = {
         200: z.any(), // Returns GeoJSON or OSM JSON
       },
     },
+  },
+  // Get turn-by-turn directions from current location to target
+  directions: {
+    get: {
+      method: 'POST' as const,
+      path: '/api/directions',
+      input: z.object({
+        startLat: z.number(),
+        startLng: z.number(),
+        endLat: z.number(),
+        endLng: z.number(),
+      }),
+      responses: {
+        200: z.object({
+          distance: z.number(),
+          duration: z.number(),
+          steps: z.array(z.object({
+            distance: z.number(),
+            duration: z.number(),
+            instruction: z.string(),
+            name: z.string().optional(),
+          })),
+        }),
+        400: errorSchemas.validation,
+      },
+    },
   }
 };
 

@@ -95,6 +95,49 @@ export async function registerRoutes(
     }
   });
 
+  // === Directions via OSRM ===
+  // Gets turn-by-turn directions between two points
+  app.post(api.directions.get.path, async (req, res) => {
+    try {
+      const { startLat, startLng, endLat, endLng } = api.directions.get.input.parse(req.body);
+      
+      // OSRM API (free, open-source routing)
+      const osrmUrl = `https://router.project-osrm.org/route/v1/car/${startLng},${startLat};${endLng},${endLat}?steps=true&geometries=geojson&overview=full`;
+      
+      const response = await axios.get(osrmUrl);
+      
+      if (response.data.routes && response.data.routes.length > 0) {
+        const route = response.data.routes[0];
+        const steps: any[] = [];
+        
+        // Extract step-by-step instructions
+        if (route.legs) {
+          for (const leg of route.legs) {
+            for (const step of leg.steps) {
+              steps.push({
+                distance: step.distance,
+                duration: step.duration,
+                instruction: step.maneuver?.instruction || 'Continue',
+                name: step.name || 'Unnamed road',
+              });
+            }
+          }
+        }
+        
+        res.json({
+          distance: route.distance,
+          duration: route.duration,
+          steps,
+        });
+      } else {
+        res.status(400).json({ message: 'No route found' });
+      }
+    } catch (err) {
+      console.error('OSRM API Error:', err);
+      res.status(500).json({ message: 'Failed to get directions' });
+    }
+  });
+
   return httpServer;
 }
 
