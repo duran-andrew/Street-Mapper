@@ -67,8 +67,8 @@ export default function Home() {
 
   const loadArea = async (lat: number, lng: number) => {
     setLoadingOSM(true);
-    // Fetch a roughly 16km x 16km box or 10 miles x 10 miles
-    const offset = 0.16;
+    // Fetch a roughly 8km x 8km box or 5 miles x 5 miles
+    const offset = 0.036;
     try {
       const data = await fetchOSM.mutateAsync({
         north: lat + offset,
