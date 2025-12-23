@@ -3,11 +3,9 @@ import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from '
 import 'leaflet/dist/leaflet.css';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { useCreateSession, useAddBreadcrumb, useOSMData } from '@/hooks/use-map-data';
-import { useDirections } from '@/hooks/use-directions';
 import { MapController } from '@/components/MapController';
 import { StatsPanel } from '@/components/StatsPanel';
 import { StartButton } from '@/components/StartButton';
-import { DirectionsPanel } from '@/components/DirectionsPanel';
 import { parseOSMData, isPointNearLine, findNearestUnvisited, type StreetSegment } from '@/lib/geo-utils';
 import { Loader2, Locate, Map as MapIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -33,10 +31,6 @@ export default function Home() {
   const createSession = useCreateSession();
   const addBreadcrumb = useAddBreadcrumb();
   const fetchOSM = useOSMData();
-  const getDirections = useDirections();
-  
-  // State for directions
-  const [directionsData, setDirectionsData] = useState<any>(null);
   
   // Refs for accumulation without re-renders
   const lastPositionRef = useRef<[number, number] | null>(null);
@@ -119,28 +113,9 @@ export default function Home() {
       // Optional haptic feedback or sound could go here
     }
 
-    // D. Update navigation target and fetch directions
+    // D. Update navigation target
     const nearest = findNearestUnvisited([coords.lng, coords.lat], segments);
     setTargetSegment(nearest);
-    
-    // Fetch directions to nearest unvisited street
-    if (nearest) {
-      const targetPoint = nearest.geometry.coordinates[0];
-      getDirections.mutate(
-        {
-          startLat: coords.lat,
-          startLng: coords.lng,
-          endLat: targetPoint[1],
-          endLng: targetPoint[0],
-        },
-        {
-          onSuccess: (data) => setDirectionsData(data),
-          onError: () => setDirectionsData(null),
-        }
-      );
-    } else {
-      setDirectionsData(null);
-    }
 
   }, [coords, isActive, sessionId]); // Depend on coords updating
 
@@ -302,20 +277,8 @@ export default function Home() {
 
         {/* Bottom Controls */}
         <div className="flex flex-col items-center gap-6 pointer-events-auto">
-          {/* Directions Panel */}
-          <div className={`transition-all duration-500 ease-out transform ${isActive && directionsData ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none absolute bottom-32'}`}>
-            {directionsData && (
-              <DirectionsPanel 
-                distance={directionsData.distance}
-                duration={directionsData.duration}
-                steps={directionsData.steps}
-                isLoading={getDirections.isPending}
-              />
-            )}
-          </div>
-
-          {/* Stats Panel */}
-          <div className={`transition-all duration-500 ease-out transform ${isActive ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none absolute bottom-24'}`}>
+          {/* Stats Panel - positioned top right */}
+          <div className={`absolute top-20 right-4 transition-all duration-500 ease-out transform ${isActive ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0 pointer-events-none'}`}>
             <StatsPanel 
               distanceDriven={distanceDriven}
               streetsVisited={visitedSegments.length}
